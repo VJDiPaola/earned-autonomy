@@ -2,6 +2,10 @@
 
 A support agent whose permissions are earned, not configured.
 
+![Earned Autonomy dashboard — the agent files a promotion request with trace evidence](docs/dashboard.png)
+
+*The moment the loop closes: the reflection agent has filed a T1→T2 promotion for refunds, citing a 100% pass rate across 12 eval samples — with Phoenix trace ids as clickable evidence. A human approves; the risk gate behaves differently on the very next tool call.*
+
 ---
 
 ## The Problem

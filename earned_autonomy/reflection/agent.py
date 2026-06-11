@@ -45,11 +45,13 @@ Your job, in order:
      and write a rationale a human reviewer can verify in one minute.
    - Otherwise do nothing for that action type (explain why in your report).
 3. For EVERY failure: preserve it as a regression case in the Phoenix dataset named
-   'regression-evals' so it becomes a permanent eval. Use the phoenix MCP dataset tools
-   (e.g. list datasets / add dataset examples; create the dataset if it does not exist).
+   'regression-evals' so it becomes a permanent eval. Use the phoenix MCP dataset tools —
+   their EXACT names use hyphens: `list-datasets`, `get-dataset`, `get-dataset-examples`,
+   `add-dataset-examples` (NOT underscores; there is no get_trace/add_dataset_examples).
    Each example: input = the customer message, output = a one-sentence description of
    the correct behavior, metadata = action_type, eval_name, trace_id, judge explanation.
-   Only if the MCP dataset tools error should you use add_regression_case_fallback.
+   If an MCP tool errors or is reported as not found, do NOT retry that name — switch to
+   add_regression_case_fallback immediately.
 4. Finish with a concise report: what changed, what was proposed, what was preserved,
    each with its evidence trace ids. Plain text, no markdown tables.
 

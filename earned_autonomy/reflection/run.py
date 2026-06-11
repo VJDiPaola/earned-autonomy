@@ -38,13 +38,23 @@ async def run_reflection() -> str:
     with tracer.start_as_current_span("reflection_turn") as span:
         span.set_attribute("openinference.span.kind", "CHAIN")
         span.set_attribute("input.value", TASK)
-        async for event in runner.run_async(
-            user_id="reflector",
-            session_id=session_id,
-            new_message=types.Content(role="user", parts=[types.Part(text=TASK)]),
-        ):
-            if event.is_final_response() and event.content and event.content.parts:
-                final_text = "".join(p.text or "" for p in event.content.parts)
+        try:
+            async for event in runner.run_async(
+                user_id="reflector",
+                session_id=session_id,
+                new_message=types.Content(role="user", parts=[types.Part(text=TASK)]),
+            ):
+                if event.is_final_response() and event.content and event.content.parts:
+                    final_text = "".join(p.text or "" for p in event.content.parts)
+        except ValueError as exc:
+            # The model occasionally normalizes hyphenated MCP tool names to
+            # underscores; tier changes/dataset writes already applied persist.
+            if "not found" not in str(exc):
+                raise
+            final_text = (
+                f"{final_text}\n[reflection ended early: {exc} — actions applied "
+                "before this point persist; see the ledger and proposals table]"
+            )
         span.set_attribute("output.value", final_text)
     return final_text
 

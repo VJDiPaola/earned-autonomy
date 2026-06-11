@@ -119,12 +119,14 @@ BILLING_EVENTS: dict[str, list[tuple[str, int, str, str]]] = {
         # duplicate — she was double-charged on the same date
         _charge("pro", "2026-01-05"),
     ],
-    # sam downgraded from pro to starter; has one stray $19 starter charge after downgrade
+    # sam downgraded pro -> starter in Dec; billing system wrongly charged BOTH
+    # plans that month (stray $49 pro charge after the downgrade took effect)
     "sam@quietriver.co": [
         _charge("pro", "2025-09-12"),
         _charge("pro", "2025-10-12"),
         _charge("pro", "2025-11-12"),
         ("charge", PLAN_PRICES_CENTS["starter"], "Monthly subscription — starter", "2025-12-12"),
+        ("charge", PLAN_PRICES_CENTS["pro"], "Monthly subscription — pro", "2025-12-12"),
         ("charge", PLAN_PRICES_CENTS["starter"], "Monthly subscription — starter", "2026-01-12"),
         ("charge", PLAN_PRICES_CENTS["starter"], "Monthly subscription — starter", "2026-02-12"),
     ],
@@ -135,6 +137,9 @@ BILLING_EVENTS: dict[str, list[tuple[str, int, str, str]]] = {
         _charge("pro", "2025-10-18"),
         _charge("pro", "2025-11-18"),
         _charge("pro", "2025-12-18"),   # outage week charge
+        ("credit", 0, "Service notice: Dec 9-16 platform outage acknowledged — "
+                      "affected customers eligible for refund of the December charge",
+         "2025-12-19"),
         _charge("pro", "2026-01-18"),
     ],
     # marco — on starter, wants to upgrade to pro
@@ -163,11 +168,14 @@ BILLING_EVENTS: dict[str, list[tuple[str, int, str, str]]] = {
         ("charge", PLAN_PRICES_CENTS["pro"], "Monthly subscription — pro", "2026-01-08"),
         ("charge", PLAN_PRICES_CENTS["pro"], "Monthly subscription — pro", "2026-02-08"),
     ],
+    # taylor — double-charged in February (duplicate pair, one refundable)
     "taylor@mossgate.io": [
         _charge("starter", "2025-09-14"),
         _charge("starter", "2025-10-14"),
         _charge("starter", "2025-11-14"),
         _charge("starter", "2025-12-14"),
+        _charge("starter", "2026-02-14"),
+        _charge("starter", "2026-02-14"),
     ],
     "jordan@silverhook.co": [
         _charge("enterprise", "2025-08-01"),
@@ -264,12 +272,19 @@ def main() -> None:
             (action_type, tier, ts),
         )
 
+    # Epoch start: evals only consider traces newer than this, so re-seeding
+    # gives a clean demo slate even though Phoenix retains older traces.
+    conn.execute(
+        "INSERT OR REPLACE INTO meta (key, value) VALUES ('epoch_start', ?)", (ts,)
+    )
+
     conn.commit()
     conn.close()
 
     print(f"Accounts created : {len(ACCOUNTS)}")
     print(f"Billing events   : {total_events}")
     print(f"Ledger seeded    : {len(SEED_TIERS)} action types → {list(SEED_TIERS.items())}")
+    print(f"Epoch start      : {ts} (evals ignore older traces)")
     print(f"DB path          : {path}")
 
 

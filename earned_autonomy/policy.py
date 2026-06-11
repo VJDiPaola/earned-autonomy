@@ -38,6 +38,7 @@ POLICY_SUMMARY = f"""\
   more than ${REFUND_CAP_CENTS // 100} total. One refund per billing event — never refund a
   charge for service the customer actually received.
 - Plan changes: only to one of {VALID_PLANS}. Confirm price difference with the customer.
+- Plan prices (for reference): starter $19/mo, pro $49/mo, enterprise $199/mo.
 - Cancellations: ALWAYS offer a retention deal (one free month) before cancelling.
 - Anything outside policy: escalate_to_human. Never promise actions you did not take.
 """

@@ -85,10 +85,19 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
 
     client = Client()  # reads PHOENIX_BASE_URL/PHOENIX_COLLECTOR_ENDPOINT + PHOENIX_API_KEY
 
-    df = client.spans.get_spans_dataframe(
-        project_identifier=os.environ.get("PHOENIX_PROJECT_NAME", "earned-autonomy"),
-        limit=2000,
-    )
+    df = None
+    for attempt in range(3):
+        try:
+            df = client.spans.get_spans_dataframe(
+                project_identifier=os.environ.get("PHOENIX_PROJECT_NAME", "earned-autonomy"),
+                limit=2000,
+                timeout=120,
+            )
+            break
+        except Exception as exc:  # noqa: BLE001
+            print(f"[runner] Span fetch attempt {attempt + 1}/3 failed: {exc}")
+            if attempt == 2:
+                raise
 
     if df is None or len(df) == 0:
         print("[runner] No spans returned from Phoenix.")
@@ -96,6 +105,23 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
 
     # ---- Filter to latest batch by start_time --------------------------------
     cutoff = datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)
+
+    # Never look past the current seed epoch: re-seeding starts a clean demo
+    # slate even though Phoenix retains every older trace.
+    try:
+        from earned_autonomy import db as _db
+
+        conn = _db.get_conn()
+        row = conn.execute("SELECT value FROM meta WHERE key='epoch_start'").fetchone()
+        conn.close()
+        if row:
+            epoch = datetime.fromisoformat(row["value"])
+            if epoch.tzinfo is None:
+                epoch = epoch.replace(tzinfo=timezone.utc)
+            cutoff = max(cutoff, epoch)
+            print(f"[runner] Epoch start {epoch.isoformat()} — older traces ignored.")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[runner] Epoch lookup failed ({exc}); using max_age only.")
 
     # start_time column may be timezone-aware or naive; normalise.
     if "start_time" in df.columns:
@@ -190,8 +216,8 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
             )
 
             result_compact = json.dumps(result_obj, default=str)
-            if len(result_compact) > 400:
-                result_compact = result_compact[:400] + "…(truncated)"
+            if len(result_compact) > 900:
+                result_compact = result_compact[:900] + "…(truncated)"
             tool_calls.append(
                 {
                     "name": str(tool_name),

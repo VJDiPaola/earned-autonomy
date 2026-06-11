@@ -68,6 +68,10 @@ CREATE TABLE IF NOT EXISTS executions (
   trace_id TEXT,
   created_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS meta (
+  key TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 """
 
 

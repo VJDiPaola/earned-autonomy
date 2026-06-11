@@ -72,7 +72,7 @@ make web           # launch dashboard at http://localhost:8080
 
 In the dashboard:
 
-1. **Run clean day** — replays 6 clean support scenarios (refunds within policy, plan changes, billing questions); traces appear in Phoenix.
+1. **Run clean day** — replays 7 clean support scenarios (refunds within policy, plan changes, billing questions); traces appear in Phoenix.
 2. **Run evals** — LLM-as-a-Judge scores the traces; pass-rate aggregates write to the ledger.
 3. **Run reflection** — reflection agent queries Phoenix via MCP, finds refund/plan_change pass-rates above threshold, files promotion proposals.
 4. **Approve the promotion** in the queue — ledger updates; tier badge changes.
@@ -90,7 +90,7 @@ Then:
 
 ```bash
 make seed          # (re)create app.db
-make day           # 6 clean scripted scenarios
+make day           # 7 clean scripted scenarios
 make traps         # 2 trap scenarios under model drift (TRAP_MODEL, default gemini-3.5-flash)
 make evals         # run LLM-as-a-Judge evals → Phoenix + ledger
 make reflect       # reflection agent: query via Phoenix MCP, file proposals/demotions
@@ -161,7 +161,7 @@ earned-autonomy/
     │   └── run.py
     ├── seed/
     │   ├── data.py                  # 12 accounts, 3 plans, billing history
-    │   └── scenarios.py             # 6 clean + 2 trap scripted scenarios
+    │   └── scenarios.py             # 7 clean + 2 trap scripted scenarios
     └── web/
         ├── main.py                  # FastAPI: chat + ledger dashboard + approval queue
         └── templates/index.html

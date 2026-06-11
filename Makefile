@@ -5,7 +5,7 @@ help:
 	@echo "  make setup   - uv sync + remind to copy .env"
 	@echo "  make seed    - (re)create app.db with accounts, billing history, ledger"
 	@echo "  make run     - one traced agent turn (MESSAGE='...')"
-	@echo "  make day     - run the 6 clean scripted scenarios (generates traces)"
+	@echo "  make day     - run the 7 clean scripted scenarios (generates traces)"
 	@echo "  make traps   - run the 2 trap scenarios (generates failures)"
 	@echo "  make evals   - LLM-as-a-Judge evals over recent traces -> Phoenix + ledger"
 	@echo "  make reflect - reflection agent: query evals via Phoenix MCP, file proposals"

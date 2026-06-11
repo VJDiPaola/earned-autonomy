@@ -417,8 +417,8 @@ def save_results(results: list[dict]) -> None:
             conn.execute(
                 """
                 INSERT INTO eval_results
-                    (run_id, span_id, trace_id, action_type, eval_name, label, explanation, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    (run_id, span_id, trace_id, action_type, eval_name, label, explanation, scenario, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     r["run_id"],
@@ -428,6 +428,7 @@ def save_results(results: list[dict]) -> None:
                     r["eval_name"],
                     r["label"],
                     r.get("explanation", ""),
+                    r.get("scenario", ""),
                     db.now_iso(),
                 ),
             )

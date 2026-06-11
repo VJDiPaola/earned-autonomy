@@ -38,6 +38,7 @@ def get_ledger_and_evals() -> dict:
                 non_ledger_failures.append({
                     "action_type": at, "eval_name": r["eval_name"],
                     "explanation": r["explanation"], "trace_id": r["trace_id"],
+                    "scenario": (r["scenario"] if "scenario" in r.keys() else ""),
                 })
             continue
         agg = aggregates.setdefault(at, {"samples": 0, "passes": 0, "trace_ids": []})
@@ -51,6 +52,7 @@ def get_ledger_and_evals() -> dict:
                 "action_type": at, "eval_name": r["eval_name"],
                 "explanation": r["explanation"], "trace_id": r["trace_id"],
                 "span_id": r["span_id"],
+                "scenario": (r["scenario"] if "scenario" in r.keys() else ""),
             })
     for at, agg in aggregates.items():
         agg["pass_rate"] = round(agg["passes"] / agg["samples"], 3) if agg["samples"] else None

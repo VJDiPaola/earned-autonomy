@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS eval_results (
   eval_name TEXT NOT NULL,
   label TEXT NOT NULL,             -- 'pass' | 'fail'
   explanation TEXT,
+  scenario TEXT,
   created_at TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS executions (

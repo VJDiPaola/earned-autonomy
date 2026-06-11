@@ -243,10 +243,24 @@
 <div id="header">
   <h1>EARNED AUTONOMY &mdash; BrightLoop Support Ops</h1>
   <span class="tagline">Permissions are earned, not configured.</span>
+  <span id="header-links" style="margin-left:auto;font-size:11px;display:flex;gap:14px">
+    <a id="link-repo" href="https://github.com/VJDiPaola/earned-autonomy" target="_blank" style="color:var(--accent);text-decoration:none">GitHub ↗</a>
+    <a id="link-phoenix" href="#" target="_blank" style="color:var(--accent);text-decoration:none">Phoenix traces ↗</a>
+  </span>
 </div>
 
 <div id="action-bar">
   <!-- job blocks injected by JS -->
+</div>
+
+<div id="demo-guide" style="padding:6px 14px;font-size:11px;color:var(--text-dim);border-bottom:1px solid var(--border);line-height:1.7">
+  <b style="color:var(--accent)">DEMO FLOW</b> —
+  ① Seed DB&ensp;② Run clean day&ensp;③ Run evals&ensp;④ Run reflection → <b>approve the promotion</b> in the queue&ensp;⑤ chat a refund &amp; watch it run at T2&ensp;
+  ⑥ Run trap day <span title="Simulates a cost-cutting deploy: the agent model is swapped to gemini-3.5-flash. Same prompt, same tools — weaker judgment.">(simulated model-drift deploy: gemini-3.5-flash)</span>&ensp;⑦ Run evals&ensp;⑧ Run reflection → watch the <b style="color:var(--red,#e66)">self-demotion</b> + regression dataset grow.
+</div>
+
+<div id="fresh-banner" style="display:none;margin:8px 14px 0;padding:7px 12px;font-size:12px;border:1px solid var(--amber,#c90);color:var(--amber,#c90);border-radius:4px">
+  Fresh state — start with <b>① Seed DB</b>, then <b>② Run clean day</b>. Buttons run live Gemini + Phoenix calls server-side; no keys needed.
 </div>
 
 <div id="main">
@@ -262,7 +276,9 @@
 
   <!-- RIGHT TOP: Ledger + Evals -->
   <div id="ledger-pane">
-    <div class="pane-title">AUTONOMY LEDGER</div>
+    <div class="pane-title" style="display:flex;align-items:center;gap:10px">AUTONOMY LEDGER
+      <a id="regression-chip" href="#" target="_blank" style="display:none;margin-left:auto;font-size:10px;color:var(--purple,#b8f);text-decoration:none;border:1px solid var(--purple,#b8f);border-radius:10px;padding:1px 8px" title="Failed cases preserved by the reflection agent through the Phoenix MCP server — each entry carries the judge's reasoning and source trace id."></a>
+    </div>
     <div class="ledger-cards" id="ledger-cards"><!-- rendered by JS --></div>
   </div>
 
@@ -321,7 +337,7 @@ function fmtPayload(payload, kind) {
 const JOBS = [
   { id:'seed',    label:'Seed DB' },
   { id:'day',     label:'Run clean day (7)' },
-  { id:'traps',   label:'Run trap day (2)' },
+  { id:'traps',   label:'Run trap day (2 · drifted model)' },
   { id:'evals',   label:'Run evals' },
   { id:'reflect', label:'Run reflection' },
 ];
@@ -492,6 +508,12 @@ function renderLedger(ledger, evalSummary) {
 
 // ---- Proposals rendering ----
 let _phoenixBase = '';
+let _phoenixProject = '';   // deep project URL from /api/state links
+
+function traceUrl(tid) {
+  if (_phoenixProject) return `${_phoenixProject}/traces/${tid}`;
+  return `${_phoenixBase || ''}/projects`;
+}
 
 function renderProposals(proposals) {
   const tbody = document.getElementById('proposals-tbody');
@@ -514,11 +536,11 @@ function renderProposals(proposals) {
       const ev = typeof p.evidence === 'string' ? JSON.parse(p.evidence) : (p.evidence||{});
       const tids = ev.trace_ids || [];
       evidenceHtml = tids.slice(0,3).map(tid =>
-        `<a class="trace-link" href="${esc(_phoenixBase)}/projects" target="_blank" title="${esc(tid)}">${esc(String(tid).slice(0,8))}…</a>`
+        `<a class="trace-link" href="${esc(traceUrl(tid))}" target="_blank" title="open trace ${esc(tid)} in Phoenix">${esc(String(tid).slice(0,8))}…</a>`
       ).join(' ');
     } catch(e) {}
     if (!evidenceHtml && p.trace_id) {
-      evidenceHtml = `<a class="trace-link" href="${esc(_phoenixBase)}/projects" target="_blank" title="${esc(p.trace_id)}">${esc(String(p.trace_id).slice(0,8))}…</a>`;
+      evidenceHtml = `<a class="trace-link" href="${esc(traceUrl(p.trace_id))}" target="_blank" title="open trace ${esc(p.trace_id)} in Phoenix">${esc(String(p.trace_id).slice(0,8))}…</a>`;
     }
 
     const statusHtml = `<span class="status-chip status-${esc(p.status)}">${esc(p.status)}</span>`;
@@ -589,6 +611,29 @@ async function pollState() {
     renderLedger(state.ledger, state.eval_summary);
     renderProposals(state.proposals);
     renderActivity(state.executions);
+
+    // Deep links from the server (Phoenix project URL resolved once server-side)
+    const links = state.links || {};
+    if (links.phoenix_project) {
+      _phoenixProject = links.phoenix_project;
+      const lp = document.getElementById('link-phoenix');
+      if (lp) lp.href = links.phoenix_project;
+    }
+
+    // Fresh-state onboarding banner
+    const fresh = (!state.executions || state.executions.length === 0)
+               && (!state.proposals || state.proposals.length === 0);
+    const banner = document.getElementById('fresh-banner');
+    if (banner) banner.style.display = fresh ? 'block' : 'none';
+
+    // Regression dataset chip (written by the reflection agent via Phoenix MCP)
+    const rd = state.regression_dataset || {};
+    const chip = document.getElementById('regression-chip');
+    if (chip && rd.examples != null) {
+      chip.textContent = `regression-evals: ${rd.examples} cases · via Phoenix MCP ↗`;
+      chip.href = `${(_phoenixProject ? _phoenixProject.split('/projects')[0] : _phoenixBase) || ''}/datasets`;
+      chip.style.display = 'inline-block';
+    }
   } catch(e) {}
 }
 

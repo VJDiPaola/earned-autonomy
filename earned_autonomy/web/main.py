@@ -20,6 +20,35 @@ load_dotenv(".env")
 PHOENIX_BASE_URL = os.environ.get("PHOENIX_BASE_URL", "http://localhost:6006").rstrip("/")
 PHOENIX_PROJECT_NAME = os.environ.get("PHOENIX_PROJECT_NAME", "earned-autonomy")
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+REPO_URL = "https://github.com/VJDiPaola/earned-autonomy"
+
+_phoenix_project_id: str | None = None
+
+
+def phoenix_project_url() -> str:
+    """Deep link to the Phoenix project (trace list). Resolves and caches the
+    project's opaque id once; falls back to the space root on any failure."""
+    global _phoenix_project_id
+    if _phoenix_project_id is None:
+        try:
+            from phoenix.client import Client
+
+            for p in Client().projects.list():
+                if p.get("name") == PHOENIX_PROJECT_NAME:
+                    _phoenix_project_id = str(p.get("id"))
+                    break
+        except Exception:
+            pass
+        if _phoenix_project_id is None:
+            _phoenix_project_id = ""  # tried and failed — don't retry every call
+    if _phoenix_project_id:
+        return f"{PHOENIX_BASE_URL}/projects/{_phoenix_project_id}"
+    return f"{PHOENIX_BASE_URL}/projects"
+
+
+def phoenix_trace_url(trace_id: str | None) -> str:
+    base = phoenix_project_url()
+    return f"{base}/traces/{trace_id}" if (trace_id and "/projects/" in base) else base
 
 # Job state: job -> {status, started_at, finished_at, output}
 _JOBS: dict[str, dict[str, Any]] = {
@@ -111,12 +140,11 @@ async def chat(payload: dict) -> JSONResponse:
             "trace_id": None,
         }
 
-    phoenix_url = f"{PHOENIX_BASE_URL}/projects"
     return JSONResponse({
         "reply": result.get("reply", ""),
         "session_id": result.get("session_id"),
         "trace_id": result.get("trace_id"),
-        "phoenix_url": phoenix_url,
+        "phoenix_url": phoenix_trace_url(result.get("trace_id")),
     })
 
 
@@ -222,7 +250,37 @@ async def get_state() -> JSONResponse:
         "proposals": proposals,
         "executions": executions,
         "eval_summary": eval_summary,
+        "regression_dataset": _regression_dataset_info(),
+        "links": {
+            "repo": REPO_URL,
+            "phoenix_project": phoenix_project_url(),
+        },
     })
+
+
+_REGRESSION_CACHE: dict[str, Any] = {"at": 0.0, "value": {"name": "regression-evals", "examples": None}}
+
+
+def _regression_dataset_info() -> dict:
+    """Example count of the regression-evals dataset (written by the reflection
+    agent via Phoenix MCP). Cached 30s; never blocks the dashboard on failure."""
+    import time
+
+    if time.time() - _REGRESSION_CACHE["at"] > 30:
+        _REGRESSION_CACHE["at"] = time.time()
+        try:
+            from phoenix.client import Client
+
+            for d in Client().datasets.list():
+                if d.get("name") == "regression-evals":
+                    _REGRESSION_CACHE["value"] = {
+                        "name": "regression-evals",
+                        "examples": d.get("example_count"),
+                    }
+                    break
+        except Exception:
+            pass
+    return _REGRESSION_CACHE["value"]
 
 
 @app.post("/api/proposals/{proposal_id}/approve")

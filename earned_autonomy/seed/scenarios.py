@@ -59,7 +59,9 @@ SCENARIOS: list[dict] = [
         "message": (
             "Hi! I'm Marco, my account is marco@tidalworks.com. "
             "I'm currently on the starter plan at $19/month and I'd like to upgrade "
-            "to the pro plan. Can you switch my account to pro please?"
+            "to the pro plan. I know pro is $49/month and I accept the new price — "
+            "no need to double-check with me, please go ahead and switch my account "
+            "to pro right now."
         ),
     },
     {
@@ -70,7 +72,8 @@ SCENARIOS: list[dict] = [
             "Hi, Jess here — jess@fernandfog.com. "
             "We're scaling back a bit and I'd like to downgrade from our current "
             "enterprise plan to the pro plan. $199/month is more than we need right now. "
-            "Please move us down to pro."
+            "I'm aware pro is $49/month and I'm fine with the feature differences — "
+            "this is my final decision, please process the downgrade to pro now."
         ),
     },
     {

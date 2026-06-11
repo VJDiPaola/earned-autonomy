@@ -115,30 +115,23 @@ def add_regression_case_fallback(dataset_name: str, customer_message: str,
     """FALLBACK ONLY if the phoenix MCP dataset tools are unavailable or error:
     appends a failed case to a Phoenix dataset via the Phoenix REST client.
     metadata_json is a JSON object string with action_type, eval_name, trace_id."""
-    import os
-
-    import phoenix as px
+    from phoenix.client import Client
 
     try:
         meta = json.loads(metadata_json) if metadata_json else {}
     except json.JSONDecodeError:
         meta = {"raw": metadata_json}
+    example = {
+        "inputs": [{"customer_message": customer_message}],
+        "outputs": [{"expected_behavior": expected_behavior}],
+        "metadata": [meta],
+    }
     try:
-        client = px.Client()
+        client = Client()
         try:
-            ds = client.get_dataset(name=dataset_name)
+            client.datasets.add_examples_to_dataset(dataset=dataset_name, **example)
         except Exception:
-            ds = None
-        import pandas as pd
-        frame = pd.DataFrame([{"input": customer_message,
-                               "expected_behavior": expected_behavior,
-                               **{f"meta_{k}": v for k, v in meta.items()}}])
-        if ds is None:
-            client.upload_dataset(dataset_name=dataset_name, dataframe=frame,
-                                  input_keys=["input"], output_keys=["expected_behavior"])
-        else:
-            client.append_to_dataset(dataset_name=dataset_name, dataframe=frame,
-                                     input_keys=["input"], output_keys=["expected_behavior"])
+            client.datasets.create_dataset(name=dataset_name, **example)
         return {"status": "ok", "dataset": dataset_name}
     except Exception as exc:  # surface loudly to the agent
         return {"status": "error", "detail": f"{type(exc).__name__}: {exc}"}

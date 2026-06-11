@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+app.db
+build/
+.DS_Store
+__pycache__
+*.pyc
+.gemini
+.claude
+.remember

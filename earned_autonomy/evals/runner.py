@@ -81,19 +81,14 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
           openinference-instrumentation-google-adk).
     """
     import pandas as pd
-    import phoenix as px
+    from phoenix.client import Client
 
-    client = px.Client()
+    client = Client()  # reads PHOENIX_BASE_URL/PHOENIX_COLLECTOR_ENDPOINT + PHOENIX_API_KEY
 
-    # Try modern API first; fall back to filter-string variant.
-    try:
-        df = client.get_spans_dataframe(project_name=os.environ.get(
-            "PHOENIX_PROJECT_NAME", "earned-autonomy"))
-    except TypeError:
-        df = client.get_spans_dataframe(
-            "span_kind == 'CHAIN'",
-            project_name=os.environ.get("PHOENIX_PROJECT_NAME", "earned-autonomy"),
-        )
+    df = client.spans.get_spans_dataframe(
+        project_identifier=os.environ.get("PHOENIX_PROJECT_NAME", "earned-autonomy"),
+        limit=2000,
+    )
 
     if df is None or len(df) == 0:
         print("[runner] No spans returned from Phoenix.")
@@ -160,11 +155,14 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
             tool_df = trace_df.iloc[0:0]  # empty
 
         for _, trow in tool_df.iterrows():
-            # Tool name: try attributes.tool.name, then span name.
-            tool_name = (
+            # Tool name: try attributes.tool.name, then span name. ADK auto-
+            # instrumentation names tool spans "execute_tool <fn>" — strip it.
+            tool_name = str(
                 _attr(trow, "tool", "name")
                 or (trow["name"] if "name" in trow.index else "unknown")
             )
+            if tool_name.startswith("execute_tool "):
+                tool_name = tool_name[len("execute_tool "):]
             raw_args = _attr(trow, "input", "value") or "{}"
             try:
                 args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
@@ -349,21 +347,22 @@ def log_to_phoenix(
     eval_name: str,
     rows: list[dict],
 ) -> None:
-    """Log eval labels back to Phoenix so they appear on trace spans."""
+    """Log eval labels back to Phoenix (span annotations, annotator_kind=LLM)."""
     try:
-        import pandas as pd
-        from phoenix.trace import SpanEvaluations  # type: ignore[import]
-
-        span_ids = [r["span_id"] for r in rows]
-        labels = [r["label"] for r in rows]
-        explanations = [r.get("explanation", "") for r in rows]
-        scores = [1 if lbl == "pass" else 0 for lbl in labels]
-
-        eval_df = pd.DataFrame(
-            {"label": labels, "explanation": explanations, "score": scores},
-            index=pd.Index(span_ids, name="context.span_id"),
-        )
-        client.log_evaluations(SpanEvaluations(eval_name=eval_name, dataframe=eval_df))
+        annotations = [
+            {
+                "span_id": r["span_id"],
+                "name": eval_name,
+                "annotator_kind": "LLM",
+                "result": {
+                    "label": r["label"],
+                    "score": 1.0 if r["label"] == "pass" else 0.0,
+                    "explanation": r.get("explanation", ""),
+                },
+            }
+            for r in rows
+        ]
+        client.spans.log_span_annotations(span_annotations=annotations, sync=True)
         print(f"[phoenix] Logged {len(rows)} '{eval_name}' evaluations to Phoenix.")
     except Exception as exc:  # noqa: BLE001
         print(
@@ -476,10 +475,10 @@ def main() -> None:
 
     # ---- Set up judge clients ------------------------------------------------
     from google import genai  # type: ignore[import]
-    import phoenix as px
+    from phoenix.client import Client as PhoenixClient
 
     gclient = genai.Client()
-    px_client = px.Client()
+    px_client = PhoenixClient()
 
     # ---- Import templates and policy -----------------------------------------
     from earned_autonomy.evals.templates import (

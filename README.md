@@ -80,16 +80,18 @@ In the dashboard:
 
 Then:
 
-6. **Run trap day** — 2 trap scenarios (refund over cap, cancel without retention offer).
-7. **Run evals** — trap traces score failures.
-8. **Run reflection** — reflection agent applies instant demotions and writes the failed cases to the `regression-evals` Phoenix dataset.
+6. **Run trap day** — simulates the most common real-world regression: **version drift**. A "cost-cutting deploy" swaps the agent model to `gemini-3.5-flash` (override with `TRAP_MODEL`) — same prompt, same tools, weaker judgment — and replays 2 deliberately confusing tickets (e.g. a double-charged customer asking for *both* charges back, when one was legitimate service).
+7. **Run evals** — the judges catch the policy-violating tool call on the trace.
+8. **Run reflection** — the reflection agent applies an **instant self-demotion** (demotions don't wait for human approval) and writes every failed case to the `regression-evals` Phoenix dataset via MCP — the mistake becomes a permanent eval.
+
+> **Honest demo design, two deliberate gaps:** (1) The agent's prompt embeds the v1 policy summary while the judges enforce the current v2 policy doc (`policy.py` documents the split) — recreating prompt/policy skew. (2) Trap day swaps the model — recreating model-version drift. We originally tried to bait `gemini-3.1-pro-preview` into policy violations with four generations of social-engineering traps; it escalated every single one. The realistic failure modes for well-aligned agents are environmental — stale prompts and model swaps — which is precisely what eval-gated autonomy is for.
 
 ### CLI equivalents
 
 ```bash
 make seed          # (re)create app.db
 make day           # 6 clean scripted scenarios
-make traps         # 2 trap scenarios
+make traps         # 2 trap scenarios under model drift (TRAP_MODEL, default gemini-3.5-flash)
 make evals         # run LLM-as-a-Judge evals → Phoenix + ledger
 make reflect       # reflection agent: query via Phoenix MCP, file proposals/demotions
 make web           # dashboard at http://localhost:8080

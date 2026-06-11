@@ -65,6 +65,10 @@ cp .env.example .env
 # Fill in: GOOGLE_API_KEY, PHOENIX_API_KEY, PHOENIX_COLLECTOR_ENDPOINT
 ```
 
+> Free-tier AI Studio keys cap Pro models at ~250 requests/day — one full demo cycle uses ~40.
+> For sustained use, route through Vertex AI instead: set `GOOGLE_GENAI_USE_VERTEXAI=1`,
+> `GOOGLE_CLOUD_PROJECT=<your-project>`, `GOOGLE_CLOUD_LOCATION=global` (see `.env.example`).
+
 ### Demo sequence — clean day then trap day
 
 ```bash

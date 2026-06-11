@@ -38,6 +38,12 @@ _JOB_COMMANDS: dict[str, list[str]] = {
     "reflect": ["uv", "run", "python", "-m", "earned_autonomy.reflection.run"],
 }
 
+# Trap day simulates version drift: a cost-cutting deploy swapped the agent
+# model. Same prompt, same tools — weaker judgment. The evals catch it.
+_JOB_ENV: dict[str, dict[str, str]] = {
+    "traps": {"GEMINI_MODEL": os.environ.get("TRAP_MODEL", "gemini-3.5-flash")},
+}
+
 app = FastAPI(title="Earned Autonomy Dashboard")
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
@@ -54,11 +60,13 @@ async def _run_job(job: str, cmd: list[str]) -> None:
     state["started_at"] = datetime.now(timezone.utc).isoformat()
     state["output"] = ""
     try:
+        env = {**os.environ, **_JOB_ENV.get(job, {})}
         proc = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
             cwd=str(REPO_ROOT),
+            env=env,
         )
         stdout, _ = await proc.communicate()
         raw = stdout.decode(errors="replace")

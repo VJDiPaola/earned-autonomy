@@ -29,8 +29,17 @@ def get_ledger_and_evals() -> dict:
 
     aggregates: dict[str, dict] = {}
     failures = []
+    non_ledger_failures = []
     for r in rows:
         at = r["action_type"]
+        if at not in policy.ACTION_TYPES:
+            # 'general' turns (no gated action) are evaluated but have no tier.
+            if r["label"] != "pass":
+                non_ledger_failures.append({
+                    "action_type": at, "eval_name": r["eval_name"],
+                    "explanation": r["explanation"], "trace_id": r["trace_id"],
+                })
+            continue
         agg = aggregates.setdefault(at, {"samples": 0, "passes": 0, "trace_ids": []})
         agg["samples"] += 1
         if r["label"] == "pass":
@@ -53,6 +62,10 @@ def get_ledger_and_evals() -> dict:
             "T2_to_T3": {"min_pass_rate": policy.PROMOTE_RULES[2][0], "min_samples": policy.PROMOTE_RULES[2][1]},
         },
         "latest_run": {"run_id": run_id, "aggregates": aggregates, "failures": failures},
+        "non_ledger_failures": non_ledger_failures,
+        "note": ("non_ledger_failures come from turns with no gated action; they have "
+                 "no autonomy tier — never propose/apply tier changes for them, but DO "
+                 "preserve them as regression cases."),
         "tier_names": policy.TIER_NAMES,
     }
 
@@ -64,6 +77,9 @@ def propose_tier_change(action_type: str, to_tier: int, rationale: str,
     that constitute the eval evidence and a one-paragraph rationale."""
     from earned_autonomy.agent import ledger as ledger_mod
 
+    if action_type not in policy.ACTION_TYPES:
+        return {"status": "error",
+                "detail": f"'{action_type}' is not a gated action type ({policy.ACTION_TYPES})."}
     current = ledger_mod.get_tier(action_type)
     if to_tier != current + 1:
         return {"status": "error",
@@ -90,6 +106,9 @@ def apply_demotion(action_type: str, reason: str, evidence_trace_ids: list[str])
     action type. Cite the failing trace ids and the judge's reasoning."""
     from earned_autonomy.agent import ledger as ledger_mod
 
+    if action_type not in policy.ACTION_TYPES:
+        return {"status": "error",
+                "detail": f"'{action_type}' is not a gated action type ({policy.ACTION_TYPES})."}
     current = ledger_mod.get_tier(action_type)
     if current <= 0:
         return {"status": "noop", "detail": f"{action_type} already at T0 (floor)."}

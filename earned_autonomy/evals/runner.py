@@ -151,6 +151,8 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
         tool_calls: list[dict] = []
         if kind_col is not None:
             tool_df = trace_df[trace_df[kind_col].str.upper() == "TOOL"]
+            if "start_time" in tool_df.columns:
+                tool_df = tool_df.sort_values("start_time")
         else:
             tool_df = trace_df.iloc[0:0]  # empty
 
@@ -187,11 +189,15 @@ def fetch_turns(max_age_minutes: int = 240) -> list[dict]:
                 or ""
             )
 
+            result_compact = json.dumps(result_obj, default=str)
+            if len(result_compact) > 400:
+                result_compact = result_compact[:400] + "…(truncated)"
             tool_calls.append(
                 {
                     "name": str(tool_name),
                     "args": args,
                     "result_status": result_status,
+                    "result": result_compact,
                     "gate_decision": gate_decision,
                 }
             )

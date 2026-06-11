@@ -24,8 +24,10 @@ run:
 day:
 	uv run python -m earned_autonomy.seed.scenarios clean
 
+# Trap day simulates a real-world regression: a cost-cutting deploy swapped the
+# agent model (version drift). Same prompt, same tools, weaker judgment.
 traps:
-	uv run python -m earned_autonomy.seed.scenarios traps
+	GEMINI_MODEL=$${TRAP_MODEL:-gemini-3.5-flash} uv run python -m earned_autonomy.seed.scenarios traps
 
 evals:
 	uv run python -m earned_autonomy.evals.runner

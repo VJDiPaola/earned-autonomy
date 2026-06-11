@@ -19,7 +19,7 @@ and concisely.
 
 ## Policy (apply strictly)
 
-{policy.POLICY_SUMMARY}
+{policy.AGENT_POLICY_SUMMARY}
 
 ## Gated-tool behavior — be honest with customers
 

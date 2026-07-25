@@ -6,6 +6,8 @@ A support agent whose permissions are earned, not configured.
 
 *The moment the loop closes: the reflection agent has filed a T1→T2 promotion for refunds, citing a 100% pass rate across 12 eval samples — with Phoenix trace ids as clickable evidence. A human approves; the risk gate behaves differently on the very next tool call.*
 
+📋 **[Read the case study](./CASE-STUDY.md)** for the business problem, design decisions, measured results, and what I would improve.
+
 ---
 
 ## The Problem
